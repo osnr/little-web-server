@@ -53,13 +53,21 @@ cassert(ffi.C.bind(socket, addr, ffi.sizeof(addr)) ~= -1)
 ffi.C.listen(socket, 10) -- backlog = 10
 
 local function send(client, data)
+   print(data, #data)
    ffi.C.send(client, data, #data, 0)
 end
 
 local response = "HTTP/1.1 200 OK\r\n\nhello"
+local chars = {}
+for c in string.gmatch(response, ".") do
+   table.insert(chars, c)
+end
+
 
 while true do
    local client = ffi.C.accept(socket, nil, nil)
-   send(client, response)
+   for _, chunk in ipairs(chars) do
+      send(client, chunk)
+   end
    ffi.C.close(client)
 end
