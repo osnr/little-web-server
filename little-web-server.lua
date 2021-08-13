@@ -1,6 +1,11 @@
 local ffi = require 'ffi'
 ffi.cdef[[
 int socket(int domain, int type, int protocol);
+typedef uint32_t socklen_t;
+int setsockopt(int sockfd, int level, int optname,
+                      const void *optval, socklen_t optlen);
+static const int SOL_SOCKET = 1;
+static const int SO_REUSEADDR = 2;
 typedef uint16_t in_port_t;
 /* POSIX.1g specifies this type name for the `sa_family' member.  */
 typedef unsigned short int sa_family_t;
@@ -20,7 +25,6 @@ struct sockaddr_in {
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
 static const uint32_t INADDR_ANY = 0x00000000;
-typedef uint32_t socklen_t;
 int bind(int sockfd, const struct sockaddr_in *addr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen);
@@ -35,6 +39,9 @@ end
 
 local socket = ffi.C.socket(ffi.C.AF_INET, ffi.C.SOCK_STREAM, 0)
 cassert(socket ~= -1)
+local optval = ffi.new('int[1]', 1)
+cassert(ffi.C.setsockopt(socket, ffi.C.SOL_SOCKET, ffi.C.SO_REUSEADDR,
+                         optval, ffi.sizeof('int')) >= 0)
 
 local addr = ffi.new('struct sockaddr_in')
 addr.sin_family = ffi.C.AF_INET
@@ -46,8 +53,12 @@ cassert(ffi.C.bind(socket, addr, ffi.sizeof(addr)) ~= -1)
 ffi.C.listen(socket, 10) -- backlog = 10
 
 local header = "HTTP/1.1 200 OK\r\n\nhello"
+local function send(client, response)
+   ffi.C.send(client, response, #response, 0)
+end
+
 while true do
    local client = ffi.C.accept(socket, nil, nil)
-   ffi.C.send(client, header, #header, 0)
+   send(client, header)
    ffi.C.close(client)
 end
