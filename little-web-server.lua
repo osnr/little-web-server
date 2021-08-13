@@ -19,10 +19,28 @@ struct sockaddr_in {
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
 static const uint32_t INADDR_LOOPBACK = 0x7f000001;
+typedef uint32_t socklen_t;
+int bind(int sockfd, const struct sockaddr_in *addr, socklen_t addrlen);
+int listen(int sockfd, int backlog);
+int accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen);
+ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+int close(int fd);
 ]]
 
 local socket = ffi.C.socket(ffi.C.AF_INET, ffi.C.SOCK_STREAM, 0)
+
 local addr = ffi.new('struct sockaddr_in')
 addr.sin_family = ffi.C.AF_INET
 addr.sin_port = ffi.C.htons(8080)
 addr.sin_addr.s_addr = ffi.C.htonl(ffi.C.INADDR_LOOPBACK)
+
+ffi.C.bind(socket, addr, ffi.sizeof(addr))
+
+ffi.C.listen(socket, 10) -- backlog = 10
+
+local header = "HTTP/1.1 200 OK\r\n\nhello"
+while true do
+   local client = ffi.C.accept(socket, nil, nil)
+   ffi.C.send(client, header, ffi.sizeof(header), 0)
+   ffi.C.close(client)
+end
