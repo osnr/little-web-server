@@ -29,6 +29,8 @@ int bind(int sockfd, const struct sockaddr_in *addr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen);
 ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+static const int SHUT_WR = 1;
+int shutdown(int sockfd, int how);
 int close(int fd);
 char *strerror(int errnum);
 ]]
@@ -53,11 +55,10 @@ cassert(ffi.C.bind(socket, addr, ffi.sizeof(addr)) ~= -1)
 ffi.C.listen(socket, 10) -- backlog = 10
 
 local function send(client, data)
-   print(data, #data)
    ffi.C.send(client, data, #data, 0)
 end
 
-local response = "HTTP/1.1 200 OK\r\n\nhello"
+local response = "HTTP/1.1 200 OK\r\n\nhello\r\n"
 local chars = {}
 for c in string.gmatch(response, ".") do
    table.insert(chars, c)
@@ -69,5 +70,6 @@ while true do
    for _, chunk in ipairs(chars) do
       send(client, chunk)
    end
+   ffi.C.shutdown(client, ffi.C.SHUT_WR)
    ffi.C.close(client)
 end
