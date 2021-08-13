@@ -52,13 +52,14 @@ cassert(ffi.C.bind(socket, addr, ffi.sizeof(addr)) ~= -1)
 
 ffi.C.listen(socket, 10) -- backlog = 10
 
-local header = "HTTP/1.1 200 OK\r\n\nhello"
-local function send(client, response)
-   ffi.C.send(client, response, #response, 0)
+local function send(client, data)
+   ffi.C.send(client, data, #data, 0)
 end
+
+local response = "HTTP/1.1 200 OK\r\n\nhello"
 
 while true do
    local client = ffi.C.accept(socket, nil, nil)
-   send(client, header)
+   send(client, response)
    ffi.C.close(client)
 end
